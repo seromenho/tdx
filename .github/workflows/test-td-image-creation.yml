@@ -36,8 +36,14 @@ jobs:
             exit 1
           fi
 
+      - name: Convert image to raw format and compress
+        run: |
+          cd guest-tools/image/
+          qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic.qcow2 disk.raw
+          tar -czvf tdx-guest-ubuntu-24.04-generic.tar.gz disk.raw
+
       - name: Upload TD image as artifact
         uses: actions/upload-artifact@v4
         with:
           name: td-image
-          path: guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2
+          path: guest-tools/image/tdx-guest-ubuntu-24.04-generic.tar.gz
