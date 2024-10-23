@@ -28,12 +28,17 @@ packages:
   - golang
   - golang-doc
   - ntp
+  - postgresql
 
 # HACK way to set root password
 # https://github.com/vmware/photon/issues/931
 # set root password to 123456
 bootcmd:
   - /bin/sed -E -i 's/^root:([^:]+):.*$/root:\$1\$root\$j0bp.KLPyr.u9kgQ428D10:17764:0:99999:7:::/' /etc/shadow
+
+runcmd:
+  - systemctl enable postgresql
+  - systemctl start postgresql
 
 power_state:
   delay: now
