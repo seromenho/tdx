@@ -24,7 +24,7 @@ jobs:
 
       - name: Run create-td-image.sh
         run: |
-          cd tdx/guest-tools/image/
+          cd guest-tools/image/
           sudo -E ./create-td-image.sh
 
       - name: Verify image creation
