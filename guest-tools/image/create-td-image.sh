@@ -43,8 +43,8 @@ fi
 
 LOGFILE=/tmp/tdx-guest-setup.txt
 FORCE_RECREATE=false
-OFFICIAL_UBUNTU_IMAGE=${OFFICIAL_UBUNTU_IMAGE:-"https://cloud-images.ubuntu.com/releases/noble/release/"}
-CLOUD_IMG=${CLOUD_IMG:-"ubuntu-24.04-server-cloudimg-amd64.img"}
+OFFICIAL_UBUNTU_IMAGE=${OFFICIAL_UBUNTU_IMAGE}
+CLOUD_IMG=${CLOUD_IMG}
 CLOUD_IMG_PATH=$(realpath "${SCRIPT_DIR}/${CLOUD_IMG}")
 if [[ "${TDX_SETUP_INTEL_KERNEL}" == "1" ]]; then
     GUEST_IMG_PATH=$(realpath "tdx-guest-ubuntu-24.04-intel.qcow2")
@@ -344,3 +344,4 @@ mv ${TMP_GUEST_IMG_PATH} ${GUEST_IMG_PATH}
 chmod a+rw ${GUEST_IMG_PATH}
 
 ok "TDX guest image : ${GUEST_IMG_PATH}"
+
