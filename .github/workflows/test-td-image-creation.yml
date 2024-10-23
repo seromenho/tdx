@@ -1,0 +1,43 @@
+name: Test TD Image Creation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-td-image-creation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      OFFICIAL_UBUNTU_IMAGE: "https://cloud-images.ubuntu.com/noble/current/"
+      CLOUD_IMG: "noble-server-cloudimg-amd64.img"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-utils
+
+      - name: Run create-td-image.sh
+        run: |
+          cd tdx/guest-tools/image/
+          sudo -E ./create-td-image.sh
+
+      - name: Verify image creation
+        run: |
+          if [ -f tdx/guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2 ]; then
+            echo "TD image created successfully"
+          else
+            echo "TD image creation failed"
+            exit 1
+          fi
+
+      - name: Upload TD image as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: td-image
+          path: tdx/guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2
