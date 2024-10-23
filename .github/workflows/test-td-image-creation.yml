@@ -25,11 +25,11 @@ jobs:
       - name: Run create-td-image.sh
         run: |
           cd guest-tools/image/
-          sudo -E ./create-td-image.sh
+          sudo -E OFFICIAL_UBUNTU_IMAGE="$OFFICIAL_UBUNTU_IMAGE" CLOUD_IMG="$CLOUD_IMG" ./create-td-image.sh
 
       - name: Verify image creation
         run: |
-          if [ -f tdx/guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2 ]; then
+          if [ -f guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2 ]; then
             echo "TD image created successfully"
           else
             echo "TD image creation failed"
@@ -37,7 +37,7 @@ jobs:
           fi
 
       - name: Upload TD image as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: td-image
-          path: tdx/guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2
+          path: guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2
