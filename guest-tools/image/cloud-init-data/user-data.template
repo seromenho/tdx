@@ -27,6 +27,10 @@ write_files:
 - content: |
     SUBSYSTEM=="misc",KERNEL=="tdx-guest",MODE="0666"
   path: /etc/udev/rules.d/90-tdx.rules
+- path: /etc/apt/apt.conf.d/20auto-upgrades
+  content: |
+    APT::Periodic::Update-Package-Lists "0";
+    APT::Periodic::Unattended-Upgrade "0";
 
 packages:
   - python3-pip=23.0.1+dfsg-1ubuntu0.1
@@ -38,14 +42,24 @@ packages:
   - google-compute-engine=20240607.00-0ubuntu1~24.04.0
 
 runcmd:
+  # Enable and start the Google guest agent for GCP-specific functionality
   - systemctl enable google-guest-agent
   - systemctl start google-guest-agent
+
+  # Configure SSH for enhanced security
   - sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
   - sed -i 's/^#\?ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
   - sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
   - systemctl restart sshd
+
+  # Enable and start PostgreSQL database service
   - systemctl enable postgresql
   - systemctl start postgresql
+
+  # Disable automatic update services to prevent unexpected changes
+  - systemctl disable --now apt-daily.service
+  - systemctl disable --now apt-daily-upgrade.service
+  - systemctl disable --now unattended-upgrades.service
 
 power_state:
   delay: now
@@ -53,3 +67,7 @@ power_state:
   message: Bye Bye
   timeout: 1
   condition: True
+
+# Disable automatic updates
+package_update: false
+package_upgrade: false
