@@ -22,7 +22,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-utils
 
-      - name: Run create-td-image.sh
+      - name: Run create-td-image.sh script
         run: |
           cd guest-tools/image/
           sudo -E OFFICIAL_UBUNTU_IMAGE="$OFFICIAL_UBUNTU_IMAGE" CLOUD_IMG="$CLOUD_IMG" ./create-td-image.sh
