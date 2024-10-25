@@ -47,14 +47,25 @@ jobs:
           cd guest-tools/image/
           tar -czvf tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz tdx-guest-ubuntu-24.04-generic.qcow2
 
+      - name: Generate and store file hashes
+        run: |
+          cd guest-tools/image/
+          sha256sum tdx-guest-ubuntu-24.04-generic.tar.gz > tdx-guest-ubuntu-24.04-generic.tar.gz.sha256
+          sha256sum tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz > tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz.sha256
+          cat *.sha256
+
       - name: Upload raw TD image as artifact
         uses: actions/upload-artifact@v4
         with:
           name: td-image-raw
-          path: guest-tools/image/tdx-guest-ubuntu-24.04-generic.tar.gz
+          path: |
+            guest-tools/image/tdx-guest-ubuntu-24.04-generic.tar.gz
+            guest-tools/image/tdx-guest-ubuntu-24.04-generic.tar.gz.sha256
 
       - name: Upload qcow2 TD image as artifact
         uses: actions/upload-artifact@v4
         with:
           name: td-image-qcow2
-          path: guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz
+          path: |
+            guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz
+            guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz.sha256
