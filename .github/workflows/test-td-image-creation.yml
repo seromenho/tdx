@@ -13,9 +13,23 @@ jobs:
     env:
       OFFICIAL_UBUNTU_IMAGE: "https://cloud-images.ubuntu.com/noble/current/"
       CLOUD_IMG: "noble-server-cloudimg-amd64.img"
+      CACHE_KEY: ubuntu-noble-image-${{ hashFiles('guest-tools/image/create-td-image.sh') }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Cache Ubuntu Image
+        id: cache-ubuntu-image
+        uses: actions/cache@v3
+        with:
+          path: guest-tools/image/${{ env.CLOUD_IMG }}
+          key: ${{ env.CACHE_KEY }}
+
+      - name: Download Ubuntu Image if not cached
+        if: steps.cache-ubuntu-image.outputs.cache-hit != 'true'
+        run: |
+          cd guest-tools/image/
+          wget ${{ env.OFFICIAL_UBUNTU_IMAGE }}/${{ env.CLOUD_IMG }}
 
       - name: Set up environment
         run: |
