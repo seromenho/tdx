@@ -1,5 +1,11 @@
 #cloud-config
 
+users:
+  - name: abadmin
+    groups: sudo
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+
 write_files:
 - content: |
     network:
@@ -28,15 +34,16 @@ packages:
   - golang
   - golang-doc
   - ntp
-  - postgresql
-
-# HACK way to set root password
-# https://github.com/vmware/photon/issues/931
-# set root password to 123456
-bootcmd:
-  - /bin/sed -E -i 's/^root:([^:]+):.*$/root:\$1\$root\$j0bp.KLPyr.u9kgQ428D10:17764:0:99999:7:::/' /etc/shadow
+  - postgresql-16
+  - google-compute-engine
 
 runcmd:
+  - systemctl enable google-guest-agent
+  - systemctl start google-guest-agent
+  - sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+  - sed -i 's/^#\?ChallengeResponseAuthentication.*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+  - sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+  - systemctl restart sshd
   - systemctl enable postgresql
   - systemctl start postgresql
 
