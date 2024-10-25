@@ -42,8 +42,19 @@ jobs:
           qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic.qcow2 disk.raw
           tar -czvf tdx-guest-ubuntu-24.04-generic.tar.gz disk.raw
 
-      - name: Upload TD image as artifact
+      - name: Compress qcow2 image
+        run: |
+          cd guest-tools/image/
+          tar -czvf tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz tdx-guest-ubuntu-24.04-generic.qcow2
+
+      - name: Upload raw TD image as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: td-image
+          name: td-image-raw
           path: guest-tools/image/tdx-guest-ubuntu-24.04-generic.tar.gz
+
+      - name: Upload qcow2 TD image as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: td-image-qcow2
+          path: guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz
