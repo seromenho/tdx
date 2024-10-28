@@ -38,7 +38,7 @@ jobs:
         run: |
           cd guest-tools/image/
           echo "Comparing images with virt-diff..."
-          sudo virt-diff -a tdx-guest-ubuntu-24.04-generic-1.qcow2 -A tdx-guest-ubuntu-24.04-generic-2.qcow2 > image-diff.txt
+          sudo virt-diff --verbose -a tdx-guest-ubuntu-24.04-generic-1.qcow2 -A tdx-guest-ubuntu-24.04-generic-2.qcow2 > image-diff.txt
           echo "Differences found:"
           cat image-diff.txt
 
