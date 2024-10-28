@@ -7,8 +7,11 @@ on:
 
 jobs:
   build-images:
+    strategy:
+      matrix:
+        image-number: [1, 2]
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
 
     env:
       OFFICIAL_UBUNTU_IMAGE: "https://cloud-images.ubuntu.com/noble/current/"
@@ -22,44 +25,38 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-utils
 
-      - name: Build first image
+      - name: Build image ${{ matrix.image-number }}
         run: |
           cd guest-tools/image/
           sudo -E OFFICIAL_UBUNTU_IMAGE="$OFFICIAL_UBUNTU_IMAGE" CLOUD_IMG="$CLOUD_IMG" ./create-td-image.sh
-          mv tdx-guest-ubuntu-24.04-generic.qcow2 tdx-guest-ubuntu-24.04-generic-1.qcow2
+          mv tdx-guest-ubuntu-24.04-generic.qcow2 tdx-guest-ubuntu-24.04-generic-${{ matrix.image-number }}.qcow2
+          rm -f *.img *.raw
 
-      - name: Build second image
+      - name: Convert and compress image
         run: |
           cd guest-tools/image/
-          sudo -E OFFICIAL_UBUNTU_IMAGE="$OFFICIAL_UBUNTU_IMAGE" CLOUD_IMG="$CLOUD_IMG" ./create-td-image.sh
-          mv tdx-guest-ubuntu-24.04-generic.qcow2 tdx-guest-ubuntu-24.04-generic-2.qcow2
+          qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic-${{ matrix.image-number }}.qcow2 disk-${{ matrix.image-number }}.raw
+          tar -czf tdx-guest-ubuntu-24.04-generic-${{ matrix.image-number }}.tar.gz disk-${{ matrix.image-number }}.raw
+          rm -f disk-${{ matrix.image-number }}.raw
 
-      - name: Convert and compress images
+      - name: Generate file hash
         run: |
           cd guest-tools/image/
-          qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic-1.qcow2 disk-1.raw
-          tar -czvf tdx-guest-ubuntu-24.04-generic-1.tar.gz disk-1.raw
-          qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic-2.qcow2 disk-2.raw
-          tar -czvf tdx-guest-ubuntu-24.04-generic-2.tar.gz disk-2.raw
+          sha256sum tdx-guest-ubuntu-24.04-generic-${{ matrix.image-number }}.tar.gz > tdx-guest-ubuntu-24.04-generic-${{ matrix.image-number }}.sha256
 
-      - name: Generate file hashes
-        run: |
-          cd guest-tools/image/
-          sha256sum tdx-guest-ubuntu-24.04-generic-*.tar.gz > hashes.sha256
-
-      - name: Upload compressed raw images and hashes
+      - name: Upload compressed raw image and hash
         uses: actions/upload-artifact@v4
         with:
-          name: td-images-compressed
+          name: td-image-${{ matrix.image-number }}
           path: |
-            guest-tools/image/tdx-guest-ubuntu-24.04-generic-*.tar.gz
-            guest-tools/image/hashes.sha256
+            guest-tools/image/tdx-guest-ubuntu-24.04-generic-${{ matrix.image-number }}.tar.gz
+            guest-tools/image/tdx-guest-ubuntu-24.04-generic-${{ matrix.image-number }}.sha256
 
-      - name: Upload uncompressed images for comparison
+      - name: Upload uncompressed image for comparison
         uses: actions/upload-artifact@v4
         with:
-          name: td-images
-          path: guest-tools/image/tdx-guest-ubuntu-24.04-generic-*.qcow2
+          name: td-image-${{ matrix.image-number }}-qcow2
+          path: guest-tools/image/tdx-guest-ubuntu-24.04-generic-${{ matrix.image-number }}.qcow2
 
   compare-virt-diff:
     needs: build-images
@@ -98,10 +95,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y qemu-utils
 
-      - name: Download images
+      - name: Download image 1
         uses: actions/download-artifact@v4
         with:
-          name: td-images
+          name: td-image-1-qcow2
+
+      - name: Download image 2
+        uses: actions/download-artifact@v4
+        with:
+          name: td-image-2-qcow2
 
       - name: Compare images using qemu-img
         run: sudo qemu-img compare -p -f qcow2 tdx-guest-ubuntu-24.04-generic-1.qcow2 tdx-guest-ubuntu-24.04-generic-2.qcow2 2>&1 > qemu-diff.txt
