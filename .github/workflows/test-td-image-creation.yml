@@ -40,9 +40,7 @@ jobs:
           echo "=== Image Comparison Report ===" > image-diff.txt
           echo "Date: $(date)" >> image-diff.txt
           echo "=============================\n" >> image-diff.txt
-
-          sudo virt-diff --format=long --human --time-days=1 --dir-links --extra-stats --uids --times -a tdx-guest-ubuntu-24.04-generic-1.qcow2 -A tdx-guest-ubuntu-24.04-generic-2.qcow2 > image-diff.txt
-
+          sudo virt-diff --format long --human-readable --time-days --dir-links --extra --uids --times -a tdx-guest-ubuntu-24.04-generic-1.qcow2 -A tdx-guest-ubuntu-24.04-generic-2.qcow2 > image-diff.txt
           echo "Differences found:"
           cat image-diff.txt
 
