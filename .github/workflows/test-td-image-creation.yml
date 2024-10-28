@@ -8,7 +8,7 @@ on:
 jobs:
   test-td-image-creation:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     env:
       OFFICIAL_UBUNTU_IMAGE: "https://cloud-images.ubuntu.com/noble/current/"
@@ -37,10 +37,8 @@ jobs:
       - name: Compare images using virt-diff
         run: |
           cd guest-tools/image/
-          echo "=== Image Comparison Report ===" > image-diff.txt
-          echo "Date: $(date)" >> image-diff.txt
-          echo "=============================\n" >> image-diff.txt
-          sudo LIBGUESTFS_DEBUG=1 virt-diff --format long --human-readable --time-days --dir-links --extra --uids --times -a tdx-guest-ubuntu-24.04-generic-1.qcow2 -A tdx-guest-ubuntu-24.04-generic-2.qcow2 2>&1 | tee -a image-diff.txt
+          echo "Comparing images with virt-diff..."
+          sudo virt-diff -a tdx-guest-ubuntu-24.04-generic-1.qcow2 -A tdx-guest-ubuntu-24.04-generic-2.qcow2 > image-diff.txt
           echo "Differences found:"
           cat image-diff.txt
 
