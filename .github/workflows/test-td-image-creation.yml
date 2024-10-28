@@ -20,52 +20,58 @@ jobs:
       - name: Set up environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-utils
+          sudo apt-get install -y qemu-utils libguestfs-tools
 
-      - name: Run create-td-image.sh script
+      - name: Build first image
         run: |
           cd guest-tools/image/
           sudo -E OFFICIAL_UBUNTU_IMAGE="$OFFICIAL_UBUNTU_IMAGE" CLOUD_IMG="$CLOUD_IMG" ./create-td-image.sh
+          mv tdx-guest-ubuntu-24.04-generic.qcow2 tdx-guest-ubuntu-24.04-generic-1.qcow2
 
-      - name: Verify image creation
-        run: |
-          if [ -f guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2 ]; then
-            echo "TD image created successfully"
-          else
-            echo "TD image creation failed"
-            exit 1
-          fi
-
-      - name: Convert image to raw format and compress
+      - name: Build second image
         run: |
           cd guest-tools/image/
-          qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic.qcow2 disk.raw
-          tar -czvf tdx-guest-ubuntu-24.04-generic.tar.gz disk.raw
+          sudo -E OFFICIAL_UBUNTU_IMAGE="$OFFICIAL_UBUNTU_IMAGE" CLOUD_IMG="$CLOUD_IMG" ./create-td-image.sh
+          mv tdx-guest-ubuntu-24.04-generic.qcow2 tdx-guest-ubuntu-24.04-generic-2.qcow2
 
-      - name: Compress qcow2 image
+      - name: Compare images using virt-diff
         run: |
           cd guest-tools/image/
-          tar -czvf tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz tdx-guest-ubuntu-24.04-generic.qcow2
+          echo "Comparing images with virt-diff..."
+          sudo virt-diff -a tdx-guest-ubuntu-24.04-generic-1.qcow2 -A tdx-guest-ubuntu-24.04-generic-2.qcow2 > image-diff.txt
+          echo "Differences found:"
+          cat image-diff.txt
+
+      - name: Convert and compress images
+        run: |
+          cd guest-tools/image/
+          # Process first image
+          qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic-1.qcow2 disk-1.raw
+          tar -czvf tdx-guest-ubuntu-24.04-generic-1.tar.gz disk-1.raw
+          tar -czvf tdx-guest-ubuntu-24.04-generic-1.qcow2.tar.gz tdx-guest-ubuntu-24.04-generic-1.qcow2
+          # Process second image
+          qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic-2.qcow2 disk-2.raw
+          tar -czvf tdx-guest-ubuntu-24.04-generic-2.tar.gz disk-2.raw
+          tar -czvf tdx-guest-ubuntu-24.04-generic-2.qcow2.tar.gz tdx-guest-ubuntu-24.04-generic-2.qcow2
 
       - name: Generate and store file hashes
         run: |
           cd guest-tools/image/
-          sha256sum tdx-guest-ubuntu-24.04-generic.tar.gz > tdx-guest-ubuntu-24.04-generic.tar.gz.sha256
-          sha256sum tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz > tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz.sha256
-          cat *.sha256
+          sha256sum tdx-guest-ubuntu-24.04-generic-*.tar.gz > hashes.sha256
+          sha256sum tdx-guest-ubuntu-24.04-generic-*.qcow2.tar.gz >> hashes.sha256
+          cat hashes.sha256
 
-      - name: Upload raw TD image as artifact
+      - name: Upload image differences
         uses: actions/upload-artifact@v4
         with:
-          name: td-image-raw
-          path: |
-            guest-tools/image/tdx-guest-ubuntu-24.04-generic.tar.gz
-            guest-tools/image/tdx-guest-ubuntu-24.04-generic.tar.gz.sha256
+          name: image-differences
+          path: guest-tools/image/image-diff.txt
 
-      - name: Upload qcow2 TD image as artifact
+      - name: Upload all artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: td-image-qcow2
+          name: td-images
           path: |
-            guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz
-            guest-tools/image/tdx-guest-ubuntu-24.04-generic.qcow2.tar.gz.sha256
+            guest-tools/image/tdx-guest-ubuntu-24.04-generic-*.tar.gz
+            guest-tools/image/tdx-guest-ubuntu-24.04-generic-*.qcow2.tar.gz
+            guest-tools/image/hashes.sha256
