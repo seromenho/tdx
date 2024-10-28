@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-td-image-creation:
+  build-images:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -20,7 +20,7 @@ jobs:
       - name: Set up environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y qemu-utils libguestfs-tools
+          sudo apt-get install -y qemu-utils
 
       - name: Build first image
         run: |
@@ -34,44 +34,80 @@ jobs:
           sudo -E OFFICIAL_UBUNTU_IMAGE="$OFFICIAL_UBUNTU_IMAGE" CLOUD_IMG="$CLOUD_IMG" ./create-td-image.sh
           mv tdx-guest-ubuntu-24.04-generic.qcow2 tdx-guest-ubuntu-24.04-generic-2.qcow2
 
-      - name: Compare images using virt-diff
-        run: |
-          cd guest-tools/image/
-          echo "Comparing images with virt-diff..."
-          sudo virt-diff --verbose -a tdx-guest-ubuntu-24.04-generic-1.qcow2 -A tdx-guest-ubuntu-24.04-generic-2.qcow2 > image-diff.txt
-          echo "Differences found:"
-          cat image-diff.txt
-
       - name: Convert and compress images
         run: |
           cd guest-tools/image/
-          # Process first image
           qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic-1.qcow2 disk-1.raw
           tar -czvf tdx-guest-ubuntu-24.04-generic-1.tar.gz disk-1.raw
-          tar -czvf tdx-guest-ubuntu-24.04-generic-1.qcow2.tar.gz tdx-guest-ubuntu-24.04-generic-1.qcow2
-          # Process second image
           qemu-img convert -f qcow2 -O raw tdx-guest-ubuntu-24.04-generic-2.qcow2 disk-2.raw
           tar -czvf tdx-guest-ubuntu-24.04-generic-2.tar.gz disk-2.raw
-          tar -czvf tdx-guest-ubuntu-24.04-generic-2.qcow2.tar.gz tdx-guest-ubuntu-24.04-generic-2.qcow2
 
-      - name: Generate and store file hashes
+      - name: Generate file hashes
         run: |
           cd guest-tools/image/
           sha256sum tdx-guest-ubuntu-24.04-generic-*.tar.gz > hashes.sha256
-          sha256sum tdx-guest-ubuntu-24.04-generic-*.qcow2.tar.gz >> hashes.sha256
-          cat hashes.sha256
 
-      - name: Upload image differences
+      - name: Upload compressed raw images and hashes
         uses: actions/upload-artifact@v4
         with:
-          name: image-differences
-          path: guest-tools/image/image-diff.txt
+          name: td-images-compressed
+          path: |
+            guest-tools/image/tdx-guest-ubuntu-24.04-generic-*.tar.gz
+            guest-tools/image/hashes.sha256
 
-      - name: Upload all artifacts
+      - name: Upload uncompressed images for comparison
         uses: actions/upload-artifact@v4
         with:
           name: td-images
-          path: |
-            guest-tools/image/tdx-guest-ubuntu-24.04-generic-*.tar.gz
-            guest-tools/image/tdx-guest-ubuntu-24.04-generic-*.qcow2.tar.gz
-            guest-tools/image/hashes.sha256
+          path: guest-tools/image/tdx-guest-ubuntu-24.04-generic-*.qcow2
+
+  compare-virt-diff:
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Install libguestfs-tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libguestfs-tools
+
+      - name: Download images
+        uses: actions/download-artifact@v4
+        with:
+          name: td-images
+
+      - name: Compare images using virt-diff
+        run: |
+          sudo virt-diff --verbose -a tdx-guest-ubuntu-24.04-generic-1.qcow2 -A tdx-guest-ubuntu-24.04-generic-2.qcow2 > image-diff.txt
+
+      - name: Upload virt-diff results
+        uses: actions/upload-artifact@v4
+        with:
+          name: virt-diff-report
+          path: virt-diff.txt
+
+  compare-qemu:
+    needs: build-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Install qemu-utils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-utils
+
+      - name: Download images
+        uses: actions/download-artifact@v4
+        with:
+          name: td-images
+
+      - name: Compare images using qemu-img
+        run: sudo qemu-img compare -p -f qcow2 tdx-guest-ubuntu-24.04-generic-1.qcow2 tdx-guest-ubuntu-24.04-generic-2.qcow2 2>&1 > qemu-diff.txt
+
+      - name: Upload qemu-img results
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-diff-report
+          path: qemu-diff.txt
